@@ -8,3 +8,4 @@ logs/
 settings.json
 build/
 *.aiff
+.DS_Store

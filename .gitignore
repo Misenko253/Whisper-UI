@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+.pytest_cache/
+recordings/
+transcripts/
+jobs/
+logs/
+settings.json
+build/
+*.aiff

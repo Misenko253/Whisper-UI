@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Rendered by install.sh: __APP_DIR__ becomes the project's absolute path. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.whisper-ui</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>__APP_DIR__/build/WhisperUI.app/Contents/MacOS/WhisperUI</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>__APP_DIR__</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <!-- Restart after a crash or kill, not after Quit from the menu (exit code 0). -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ProcessType</key>
+    <string>Interactive</string>
+    <key>StandardOutPath</key>
+    <string>__APP_DIR__/logs/launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>__APP_DIR__/logs/launchd.log</string>
+</dict>
+</plist>

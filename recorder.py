@@ -4,6 +4,7 @@ to a crash-safe WAV, so slow disk I/O never drops audio."""
 import logging
 import queue
 import threading
+import time
 
 import numpy as np
 import sounddevice as sd
@@ -12,6 +13,7 @@ from wavio import WavWriter
 
 TARGET_RATE = 16000  # what Whisper uses; CoreAudio resamples for us
 SILENCE_CHECK_SECONDS = 3
+STOP_TIMEOUT = 2  # seconds to wait for the callback to end the stream
 
 log = logging.getLogger(__name__)
 
@@ -38,6 +40,7 @@ def _device_index(name: str | None) -> int | None:
 class Recorder:
     def __init__(self, path, device_name: str | None = None, on_silence=None):
         self._queue: queue.Queue[bytes | None] = queue.Queue()
+        self._stopping = threading.Event()
         self._on_silence = on_silence
         self._heard_sound = False
         self._frames_checked = 0
@@ -64,6 +67,8 @@ class Recorder:
         if status:
             log.warning("Audio input status: %s", status)
         self._queue.put(bytes(indata))
+        if self._stopping.is_set():
+            raise sd.CallbackStop
 
     def _drain(self):
         while (chunk := self._queue.get()) is not None:
@@ -82,10 +87,23 @@ class Recorder:
 
     def stop(self) -> None:
         try:
-            self.stream.stop()
+            self._stop_stream()
             self.stream.close()
         finally:
             self._queue.put(None)
             self._thread.join()
             self.writer.close()
         log.info("Recording stopped after %.1f s", self.writer.duration)
+
+    def _stop_stream(self) -> None:
+        """Let the callback end the stream on CoreAudio's IO thread. stream.stop() from another
+        thread can deadlock: AudioOutputUnitStop holds the AudioUnit lock while it waits for the
+        IO thread, and the IO thread waits for that lock in PortAudio's IsRunning listener."""
+        self._stopping.set()
+        deadline = time.monotonic() + STOP_TIMEOUT
+        while self.stream.active:
+            if time.monotonic() > deadline:  # no callbacks arriving: fall back to the risky way
+                log.warning("Input stream did not stop from its callback; aborting it")
+                self.stream.abort()
+                return
+            time.sleep(0.01)

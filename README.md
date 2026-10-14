@@ -52,3 +52,8 @@ If you denied it: System Settings → Privacy & Security → Microphone.
 ```bash
 .venv/bin/pytest
 ```
+
+## License
+
+[PolyForm Strict 1.0.0](LICENSE.md): free to use for noncommercial purposes only.
+Changing it, redistributing it, and commercial use are not allowed.

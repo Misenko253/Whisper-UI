@@ -6,6 +6,7 @@ Also runnable headless, through the same job queue the menu's "Transcribe fileâ€
 
 import argparse
 import contextlib
+import gc
 import logging
 import os
 import queue
@@ -64,6 +65,17 @@ def transcribe_job(job: Job, out_dir: str, on_progress=lambda fraction: None) ->
     return base + ".txt"
 
 
+def release_memory() -> None:
+    """Give GPU memory back while idle: mlx-whisper keeps the model loaded (~3 GB) and MLX keeps
+    freed buffers cached for reuse (several GB after a long recording, up to ~all of RAM)."""
+    import mlx.core as mx
+    from mlx_whisper.transcribe import ModelHolder
+
+    ModelHolder.model = ModelHolder.model_path = None
+    gc.collect()
+    mx.clear_cache()
+
+
 def new_file_job(store: JobStore, audio: str, language: str | None, model: str) -> Job:
     job_id = jobs.unique_id([paths.JOBS, paths.RECORDINGS, paths.TRANSCRIPTS])
     job = Job(job_id, os.path.abspath(audio), language, model, state=PENDING)
@@ -109,6 +121,8 @@ class Worker:
                 self.on_event("failed", job, job.error)
             finally:
                 self.current = None
+                if self._queue.empty():  # back-to-back jobs keep the loaded model
+                    release_memory()
 
 
 def main(argv=None) -> int:
